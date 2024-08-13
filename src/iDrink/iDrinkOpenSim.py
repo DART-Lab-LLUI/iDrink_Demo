@@ -160,8 +160,6 @@ def open_sim_pipeline(curr_trial):
         I used different methods. Sliding Window mean / median, Splines, Interpolation.
 
         The most stable result gave putting the mean on all values of CHip, RHip, and LHip.
-
-        TODO: Make function more efficient
         """
 
         trc = TRCData()
@@ -171,9 +169,6 @@ def open_sim_pipeline(curr_trial):
                 "RHip": -1,
                 "LHip": -1
                 }
-
-        """comp = ["CHip", "RHip", "LHip"]
-        comp_in_trc = [False, False, False]"""
         hips = {}
 
         for c in comp.keys():
@@ -220,7 +215,7 @@ def open_sim_pipeline(curr_trial):
         stabilize_hip_movement(os.path.join(curr_trial.dir_trial, curr_trial.opensim_marker_filtered))
 
     model = opensim.Model(curr_trial.opensim_model)
-    state = model.initSystem()
+    model.initSystem()
     scaleTool = opensim.ScaleTool(curr_trial.opensim_scaling)
     ikTool = opensim.InverseKinematicsTool(curr_trial.opensim_inverse_kinematics)
     # Necessary for Table Processing
@@ -252,6 +247,7 @@ def open_sim_pipeline(curr_trial):
 
 
     from Pose2Sim.Utilities import bodykin_from_mot_osim
+
     bodykin_csv = os.path.realpath(os.path.join(curr_trial.dir_kin_p2s,
                                                 f"{curr_trial.get_filename()}_Body_kin_p2s_pos.csv"))
     if not os.path.exists(curr_trial.dir_kin_p2s):

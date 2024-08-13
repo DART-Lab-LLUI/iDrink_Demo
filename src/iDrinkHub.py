@@ -11,8 +11,6 @@ import pandas as pd
 
 from iDrink import iDrinkTrial, iDrinkVisualInput, iDrinkOpenSim
 
-from Pose2Sim import Pose2Sim
-
 """
 This File runs the iDrink Pipeline for the Demo for September 2024.
 
@@ -97,14 +95,14 @@ def create_trials(id_s, id_p, df_events, task, calib_file):
 
     return trials
 
-def run(id_s, id_p, task='drink', stabilize_hip=False, correct_skeleton=False):
+def run(id_s, id_p, task='drink', stabilize_hip=True, correct_skeleton=False):
     """
     Runs the iDrink Pipeline for the Demo in September 2024.
 
     The Demo uses the Pose Estimation implemented by Pose2Sim.
 
     :param id_s: Session ID e.g. "rest" or "13082024-1428"
-    :param id_p: Pateint ID e.g. "4a2" or "5051234"
+    :param id_p: Patient ID e.g. "4a2" or "5051234"
     :param task: Task e.g. "drink"
     :param stabilize_hip: Boolean whether hip should be stabilized using the mean after inverse Kinematics
     :param correct_skeleton: Boolean whether the skeleton should be rotated in the global coordinate System to sit upright.
