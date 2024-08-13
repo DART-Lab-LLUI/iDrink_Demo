@@ -251,14 +251,13 @@ def open_sim_pipeline(curr_trial):
     curr_trial.path_opensim_ana_ang_acc = glob.glob(os.path.join(curr_trial.dir_anatool_results, r"*Kinematics_dudt*"))[0]
 
 
-    from Pose2Sim_081_iDrink.Utilities import bodykin_from_mot_osim
+    from Pose2Sim.Utilities import bodykin_from_mot_osim
     bodykin_csv = os.path.realpath(os.path.join(curr_trial.dir_kin_p2s,
                                                 f"{curr_trial.get_filename()}_Body_kin_p2s_pos.csv"))
     if not os.path.exists(curr_trial.dir_kin_p2s):
         os.makedirs(curr_trial.dir_kin_p2s)
     bodykin_from_mot_osim.bodykin_from_mot_osim_func(os.path.join(curr_trial.dir_trial, curr_trial.opensim_motion),
                                                      os.path.join(curr_trial.dir_trial,
-                                                                  curr_trial.opensim_model_scaled),
-                                                     bodykin_csv)
+                                                                  curr_trial.opensim_model_scaled), bodykin_csv)
     if curr_trial.correct_skeleton:
         correct_skeleton_orientation(os.path.join(curr_trial.dir_trial, curr_trial.opensim_motion))
