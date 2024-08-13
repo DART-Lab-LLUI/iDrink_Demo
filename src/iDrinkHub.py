@@ -9,7 +9,7 @@ from tqdm import tqdm
 import argparse
 import pandas as pd
 
-from iDrink import iDrinkTrial, iDrinkPoseEstimation, iDrinkVisualInput
+from iDrink import iDrinkTrial, iDrinkPoseEstimation, iDrinkVisualInput, iDrinkOpenSim
 
 from Pose2Sim import Pose2Sim
 
@@ -24,6 +24,18 @@ dir_mot_out = None
 
 dir_session_data = os.path.join(dir_root, "session_data")
 
+def move_files_to_bids(trial, dir_mot_out):
+    """
+    Moves .mov and .sto files to the movement folder in the bids-tree
+
+
+    :param trial:
+    :return:
+    """
+
+    dir_trial = trial.dir_trial
+
+
 def create_trials(id_s, id_p, df_events, task, calib_file):
     """
     Create Trial objects from the events dataframe.
@@ -35,28 +47,28 @@ def create_trials(id_s, id_p, df_events, task, calib_file):
     """
     trials = []
     n_trials = df_events.shape[0]
+    id_s = f"S{id_s}"
+    id_p = f"P{id_p}"
 
     for i in range(n_trials):
         onset = df_events.loc[i, "onset"]
         offset = df_events.loc[i, "offset"]
         trial_id = df_events.loc[i, "trial_id"]
-
         id_t = f"T{trial_id:03d}"
-        id_s = f"S{id_s}"
-        id_p = f"P{id_p}"
+
         identifier = f"{id_s}_{id_p}_{id_t}"
 
         dir_session = os.path.join(dir_session_data, id_s)
         dir_calib = os.path.join(dir_session, f"{id_s}_{id_p}_Calibration")
-        dir_participant = os.path.join(dir_session, id_p)
-        dir_trial = os.path.join(dir_participant, id_t)
+        dir_participant = os.path.join(dir_session, f"{id_s}_{id_p}")
+        dir_trial = os.path.join(dir_participant, f"{id_s}_{id_p}_{id_t}")
 
         calib_file_new = os.path.join(dir_calib, os.path.basename(calib_file))
 
         trial = iDrinkTrial.Trial(identifier=identifier, id_s=id_s, id_p=id_p, id_t = trial_id,
                                   onset=onset, offset=offset, assessement="Drinking-Task", task=task,
                                   dir_trial=dir_trial, dir_participant=dir_participant, dir_session=dir_session,
-                                  dir_root=dir_root,
+                                  dir_root=dir_root, used_framework='pose2sim', pose_model="Coco17_UpperBody",
                                   path_calib=calib_file_new)
 
         trial.create_trial()
@@ -104,6 +116,18 @@ def run(id_s, id_p, task='drink'):
         """Run Pipeline for each trial"""
         trial.config_dict["pose"]["videos"] = videos
         trial.config_dict["pose"]["cams"] = cams
+
+        trial.config_dict.get("project").update({"project_dir": trial.dir_trial})
+        trial.config_dict['pose']['pose_framework'] = trial.used_framework
+        trial.config_dict['pose']['pose_model'] = trial.pose_model
+
+        trial.run_pose2sim()
+
+        trial.prepare_opensim()
+
+        iDrinkOpenSim.open_sim_pipeline(trial)
+
+        move_files_to_bids(trial, dir_mot_out)
 
         # TODO: Add that somewhere before Pose Estimation
 

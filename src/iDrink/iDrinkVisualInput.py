@@ -72,7 +72,7 @@ def cut_videos_to_trials(video_files, trial):
         thread_frame.start()
 
         video_files_new.append(video_new)
-        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(video_new, fourcc, fps, (width, height))
 
         pbar = tqdm(total=total_frames_of_trial, desc="Processing Video", unit="frame")
