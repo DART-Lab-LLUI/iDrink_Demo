@@ -74,11 +74,9 @@ def cut_videos_to_trials(video_files, trial):
         video_files_new.append(video_new)
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(video_new, fourcc, fps, (width, height))
-
+        print(f"starting with {trial.identifier}: {os.path.basename(video_new)}")
         pbar = tqdm(total=total_frames_of_trial, desc="Processing Video", unit="frame")
         # Run and write frames until last frame
-
-        print(f"starting with {trial.identifier}: {os.path.basename(video_new)}")
         while True:
             ret = ret_queue.get()
             frame = frame_queue.get()

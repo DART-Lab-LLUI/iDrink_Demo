@@ -116,6 +116,7 @@ class Trial:
         self.task = task  # The executed Task
         self.measured_side = measured_side
         self.affected = affected
+        self.is_reference = is_reference
 
         # Configurations, Calibrations, Settings
         self.path_config = path_config
@@ -292,14 +293,6 @@ class Trial:
         self.opensim_dir_analyze_results = self.get_opensim_path(
             os.path.join(self.dir_movement_analysis, "kin_opensim_analyzetool"))
 
-    def __str__(self):
-        return f"Trial ID: {self.id_t}, Patient ID: {self.id_p}, Date: {self.date_time}"
-
-    def make_settings(self):
-        """
-        This Function needs to run before the analysis. It defines all the settings for the data analysis of the trial.
-        """
-
     def create_trial(self):
         """
         This function creates all the folders and their subfolders.
@@ -336,76 +329,6 @@ class Trial:
             self.path_config = os.path.realpath(os.path.join(self.dir_trial, f"{self.identifier}_Config.toml"))
 
         write_default_configuration(empty_file, self.path_config)
-
-    def update_score(self, new_score):
-        self.score = new_score
-
-    def mark_as_skipped(self, reason):
-        self.skipped = True
-        self.skip_reason = reason
-
-    def ids_from_dir_trial(self):
-        """
-        This Funtion uses the directories to infer the Ids and the Identifier of the trial.
-
-        Then it sets fixed paths and directory names in the object, that use the IDs or the Identifier.
-
-        This Function is mainly used for batch processing Data, that is in the correct Folder structure,
-        but doesn't have any Trial files created for them. It should ensure a uniform folder structure for recorded
-        and batch processed Sessions.
-        """
-
-        import re
-        self.dir_participant = os.path.realpath(os.path.join(self.dir_trial, '..'))
-        self.dir_session = os.path.realpath(os.path.join(self.dir_participant, '..'))
-
-        self.id_s = re.search(r'(S\d{8})-(\d{6})', os.path.basename(self.dir_session)).group()
-        self.id_p = re.search(r'(P\d+)[^\\]*$', os.path.basename(self.dir_participant)).group(1)
-        self.id_t = re.search(r'(T\d+)[^\\]*$', os.path.basename(self.dir_trial)).group(1)
-
-        self.identifier = f"{self.id_s}_{self.id_p}_{self.id_t}"
-
-        self.dir_calib = os.path.realpath(os.path.join(self.dir_session, f'{self.id_s}_Calibration'))
-        self.dir_calib_videos = os.path.realpath(os.path.join(self.dir_calib, f'{self.id_s}_Calibration_videos'))
-        self.dir_calib_files = os.path.realpath(os.path.join(self.dir_calib, f'{self.id_s}_Calibration_files'))
-
-        self.path_ang_joint_kin = os.path.realpath(os.path.join(self.dir_murphy_measures, f"{self.identifier}_ang_joint_kin.csv"))
-        self.path_ep_kin_movement_time = os.path.realpath(os.path.join(self.dir_murphy_measures, f"{self.identifier}_ep_kin_movement_time.csv"))
-        self.path_ep_kin_movement_units = os.path.realpath(os.path.join(self.dir_murphy_measures, f"{self.identifier}_ep_kin_movement_units.csv"))
-        self.path_ep_kin_peak_velocities = os.path.realpath(os.path.join(self.dir_murphy_measures, f"{self.identifier}_ep_kin_peak_velocities.csv"))
-
-    def set_filename_appendix(self):
-        """
-        Sets the appendix for filenames based on the settings of the trial.
-
-        Do not change any Paths or the identifier itself.
-        :return:
-        """
-
-        appendix = ""
-        if self.use_analyze_tool:
-            appendix += "_AnalyzeTool"
-        elif self.bod_kin_p2s:
-            appendix += "_P2S"
-        else:
-            appendix += "_TRC"
-
-        if self.use_acceleration:
-            appendix += "_Acc"
-
-        if self.use_dist_handface:
-            if self.use_torso:
-                appendix += "_Distancetorso"
-            else:
-                appendix += "_Distanceface"
-
-        self.filenename_appendix = appendix
-
-        self.path_ang_joint_kin = os.path.realpath(os.path.join(self.dir_murphy_measures, f"{self.identifier}{self.filenename_appendix}_ang_joint_kin.csv"))
-        self.path_ep_kin_movement_time = os.path.realpath(os.path.join(self.dir_murphy_measures, f"{self.identifier}{self.filenename_appendix}_ep_kin_movement_time.csv"))
-        self.path_ep_kin_movement_units = os.path.realpath(os.path.join(self.dir_murphy_measures, f"{self.identifier}{self.filenename_appendix}_ep_kin_movement_units.csv"))
-        self.path_ep_kin_peak_velocities = os.path.realpath(os.path.join(self.dir_murphy_measures, f"{self.identifier}{self.filenename_appendix}_ep_kin_peak_velocities.csv"))
-        self.path_mov_phases_timeframe = os.path.realpath(os.path.join(self.dir_murphy_measures, f"{self.identifier}{self.filenename_appendix}_mov_phases_timeframe.csv"))
 
     def check_if_affected(self):
         recnames = glob.glob(os.path.join(self.dir_recordings, "*unaffected*"))
@@ -476,83 +399,6 @@ class Trial:
             import toml
             self.calib = toml.load(file)
         return self.calib
-
-
-    def batch_calibration(self, run_anyway=False):
-        """
-        Runs an old verison of the calibration. It can be still used in DEBUGGING
-
-        # TODO: Remove this function when not needed anymore
-
-        :return:
-        """
-        from .iDrinkCalibration import delta_calibration
-        dir_session = os.path.realpath(os.path.join(self.dir_trial, '..', '..'))
-
-        pattern = os.path.join(dir_session, f'{self.id_s}_calib*')
-        dir_calib = sorted(glob.glob(pattern))[0]
-        dir_calibration_video = os.path.realpath(os.path.join(dir_calib, "calib_video_files"))
-
-        if run_anyway:
-            delta_calibration(self)
-            self.path_calib = glob.glob(os.path.join(dir_calib, '*calib*.toml'))[0]
-            self.load_calibration()  # load Calibration-file
-        else:
-            try:
-                # Try to load the first .toml in alphanumerical order
-                self.path_calib = sorted(glob.glob(os.path.join(dir_calib, '*calib*.toml')))[0]
-                self.load_calibration()  # load Calibration-file
-                print(f"Calibration-file found: {self.calib}. Calibration will be skipped")
-            except IndexError:
-                # IndexError occurs when the list is empty, i.e. no file was found.
-                print(f"no .toml Calibration-file found in {dir_calib}. start calibration.")
-                delta_calibration(self)
-                self.path_calib = glob.glob(os.path.join(dir_calib, '*calib*.toml'))[0]
-                self.load_calibration()  # load Calibration-file
-            except Exception as e:
-                # Catch any other exceptions
-                raise Exception(f"An error occurred: {e}")
-
-    def run_analysis_Pipeline(self):
-        """
-        Runs all function from pose_estimation until the full analysis with the murphy measures is done.
-        """
-
-        from .iDrinkAnalytics import calculate_keypoint_vel_acc, calculate_bodykin_vel_acc, run_full_analysis
-        from .iDrinkOpenSim import open_sim_pipeline
-
-        """Pose Estimation"""
-        from .iDrinkPoseEstimation import pose_estimation_2d
-        try:
-            pose_estimation_2d(self, writevideofiles=self.write_pose_videos)
-        except Exception as e:
-            print(f"An error occurred during the Pose Estimation: {e}")
-
-        """Run Pose2Sim"""
-        try:
-            self.load_configuration()
-            self.run_pose2sim()
-        except Exception as e:
-            print(f"An error occurred during the Pose2Sim Pipeline: {e}")
-
-        """Prepare and Run OpenSim"""
-        try:
-            self.prepare_opensim()
-            open_sim_pipeline(self)
-        except Exception as e:
-            print(f"An error occurred during the OpenSim Pipeline: {e}")
-
-
-        """Run Data Analysis Pipeline"""
-        try:
-            calculate_keypoint_vel_acc(curr_trial=self)
-            calculate_bodykin_vel_acc(curr_trial=self)
-            run_full_analysis(curr_trial=self)
-        except Exception as e:
-            print(f"An error occurred during the analysis: {e}")
-
-        print(f"Trial {self.identifier} has been processed.")
-
 
     def get_time_range(self, path_trc_file, start_time=0, frame_range=[], as_string=False):
         """
@@ -690,149 +536,5 @@ class Trial:
         else:
             print('Marker augmentation is only supported with OpenPose BODY_25 and BODY_25B models.\n'
                   'Augmentation will be skipped.')
-
-
-    def save_all_mov_paths(self):
-        """
-        Read Files based on Opensim Paths and load position, velocity and acceleration data of interest.
-
-        The data is placed in a DataFrame.
-
-        input:
-            - Paths from config file
-        output:
-            - dict_mov: DataFrame containing movement Data
-        """
-        self.path_opensim_ik = self.find_file(self.dir_kin_ik_tool, ".csv")
-
-        # Retrieve paths and data using the output of the OpenSim Analyze Tool (.sto files)
-        # marker position
-        self.path_opensim_ana_pos = self.find_file(self.dir_anatool_results, ".sto", flag="BodyKinematics_pos")
-        self.path_opensim_ana_vel = self.find_file(self.dir_anatool_results, ".sto", flag="BodyKinematics_vel")
-        self.path_opensim_ana_acc = self.find_file(self.dir_anatool_results, ".sto", flag="BodyKinematics_acc")
-        self.path_opensim_ana_ang_pos = self.find_file(self.dir_anatool_results, ".sto", flag="Kinematics_q")
-        self.path_opensim_ana_ang_vel = self.find_file(self.dir_anatool_results, ".sto", flag="Kinematics_u")
-        self.path_opensim_ana_ang_acc = self.find_file(self.dir_anatool_results, ".sto", flag="Kinematics_dudt")
-
-        # Retrieve path and data for marker position and velocity using the Body Kinematics calculated by Pose2Sim Inverse Kinematics
-        self.path_p2s_ik_pos = self.find_file(self.dir_kin_p2s, ".csv", flag="p2s_pos")
-        self.path_p2s_ik_vel = self.find_file(self.dir_kin_p2s, ".csv", flag="p2s_vel")
-        self.path_p2s_ik_acc = self.find_file(self.dir_kin_p2s, ".csv", flag="p2s_acc")
-
-        # Retrieve path and data for marker position and velocity using the keypoints
-        self.path_trc_pos = os.path.join(self.dir_trial, self.opensim_marker_filtered)
-        self.path_trc_vel = self.find_file(self.dir_kin_trc, ".csv", flag="keypoint_vel")
-        self.path_trc_acc = self.find_file(self.dir_kin_trc, ".csv", flag="keypoint_acc")
-
-    def save_all_mov_data(self):
-        """
-        Read Files based on Opensim Paths and load position, velocity and acceleration data of interest.
-
-        The data is placed in a DataFrame.
-
-        input:
-            - Paths from config file
-        output:
-            - dict_mov: DataFrame containing movement Data
-        """
-        from .iDrinkOpenSim import read_opensim_file
-        from .iDrinkAnalytics import get_keypoint_positions, get_measured_side
-
-        # Read output from Opensim Inverese Kinematics from .csv into DataFrame
-        self.opensim_ik = pd.read_csv(self.path_opensim_ik)
-
-        # Retrieve paths and data using the output of the OpenSim Analyze Tool (.sto files)
-        self.opensim_ana_pos = read_opensim_file(self.path_opensim_ana_pos)
-        self.opensim_ana_vel = read_opensim_file(self.path_opensim_ana_vel)
-        self.opensim_ana_acc = read_opensim_file(self.path_opensim_ana_acc)
-        self.opensim_ana_ang_pos = read_opensim_file(self.path_opensim_ana_ang_pos)
-        self.opensim_ana_ang_vel = read_opensim_file(self.path_opensim_ana_ang_vel)
-        self.opensim_ana_ang_acc = read_opensim_file(self.path_opensim_ana_ang_acc)
-
-        # Retrieve path and data for marker position and velocity using the Body Kinematics calculated by Pose2Sim Inverse Kinematics
-        self.p2s_ik_pos = pd.read_csv(self.path_p2s_ik_pos)
-        self.p2s_ik_vel = pd.read_csv(self.path_p2s_ik_vel)
-        self.p2s_ik_acc = pd.read_csv(self.path_p2s_ik_acc)
-
-        # Retrieve path and data for marker position and velocity using the keypoints
-        self.trc_pos = get_keypoint_positions(self.path_trc_pos)
-        self.trc_vel = pd.read_csv(self.path_trc_vel)
-        self.trc_acc = pd.read_csv(self.path_trc_acc)
-
-        # Retrieve Joint information using the output of the Inverse Kinematics Tool
-        # TODO: If we actually want to use it like that, we might need to smoothen it a bit. Especially the acceleration seem unstable in the plot.
-        self.opensim_ik_ang_pos = self.opensim_ik.drop(columns="time")
-        self.opensim_ik_ang_vel = pd.DataFrame(data=np.gradient(self.opensim_ik_ang_pos.values, axis=0),
-                                               columns=self.opensim_ik_ang_pos.columns)
-        self.opensim_ik_ang_acc = pd.DataFrame(data=np.gradient(self.opensim_ik_ang_vel.values, axis=0),
-                                               columns=self.opensim_ik_ang_vel.columns)
-
-        # TODO: Side determination might be done somewhere else. Or done differently
-        # Determine the measured side and save to object
-        if not self.measured_side:
-            self.measured_side = get_measured_side(self.opensim_ik)
-
-    def get_mov_data_for_analysis(self):
-        """
-        Read Files based on Opensim Paths and load position, velocity and acceleration data of interest.
-
-        The data is placed in a DataFrame.
-
-        input:
-            - Paths from config file
-        output:
-            - dict_mov: DataFrame containing movement Data
-        """
-        from .iDrinkOpenSim import read_opensim_file
-        from .iDrinkAnalytics import get_keypoint_positions, get_measured_side
-
-        if self.use_analyze_tool is None or self.bod_kin_p2s is None:
-            print("Please determine settings for movement analysis.")
-            return False  # Tell calling function that no data was loaded
-
-        # Read output from Opensim Inverese Kinematics from .csv into DataFrame
-        self.opensim_ik = pd.read_csv(self.path_opensim_ik)
-
-        if self.use_analyze_tool:
-            # Retrieve paths and data using the output of the OpenSim Analyze Tool (.sto files)
-            _, self.marker_pos = read_opensim_file(self.path_opensim_ana_pos)
-            _, self.marker_vel = read_opensim_file(self.path_opensim_ana_vel)
-            _, self.marker_acc = read_opensim_file(self.path_opensim_ana_acc)
-            _, self.joint_pos = read_opensim_file(self.path_opensim_ana_ang_pos)
-            _, self.joint_vel = read_opensim_file(self.path_opensim_ana_ang_vel)
-            _, self.joint_acc = read_opensim_file(self.path_opensim_ana_ang_acc)
-            self.marker_source = "anatool"
-            self.joint_source = "anatool"
-        else:
-
-            if self.bod_kin_p2s:
-                # Retrieve path and data for marker position and velocity using the Body Kinematics calculated by Pose2Sim Inverse Kinematics
-                self.marker_pos = pd.read_csv(self.path_p2s_ik_pos)
-                self.marker_vel = pd.read_csv(self.path_p2s_ik_vel)
-                self.marker_acc = pd.read_csv(self.path_p2s_ik_acc)
-                self.marker_source = "p2s"
-            else: # use trc files
-                # Retrieve path and data for marker position and velocity using the keypoints
-                self.marker_pos = get_keypoint_positions(self.path_trc_pos)
-                self.marker_vel = pd.read_csv(self.path_trc_vel)
-                self.marker_acc = pd.read_csv(self.path_trc_acc)
-                self.marker_source = "trc"
-
-            # Retrieve Joint information using the output of the Inverse Kinematics Tool
-            # TODO: If we actually want to use it like that, we might need to smoothen it a bit. Especially the acceleration seem unstable in the plot.
-            self.joint_pos = self.opensim_ik.drop(columns="time")
-            self.joint_vel = pd.DataFrame(data=np.gradient(self.opensim_ik_ang_pos.values, axis=0),
-                                          columns=self.opensim_ik_ang_pos.columns)
-            self.joint_acc = pd.DataFrame(data=np.gradient(self.opensim_ik_ang_vel.values, axis=0),
-                                          columns=self.opensim_ik_ang_vel.columns)
-            self.joint_source = "invkintool"
-
-        # TODO: Side determination might be done somewhere else. Or done differently
-        # Determine the measured side and save to object
-        if not self.measured_side:
-            self.measured_side = get_measured_side(self.opensim_ik)
-
-        return True  # Tell calling function that data was loaded successfully
-
 
 

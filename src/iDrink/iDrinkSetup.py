@@ -6,7 +6,52 @@ import glob
 import os
 import re
 import string
+import toml
 
+def write_to_config(old_file, new_file, category, variable_dict=None):
+    """
+    Loads a toml file to a dictionary, adds/changes values and saves back to the toml.
+
+    There are two ways this function can be used
+
+    1. category as dictionary:
+        Keys are names of the categories, values are dictionaries equal to variable_dict in second way.
+
+    2. category as string and variable_dict as dictionary:
+        Category tells the category to change while variable_dict all the variables of this category to be changed.
+
+    input:
+    old_file: Path to toml file to be changed
+    new_file: Path to save the toml file
+    category: category of changes, dict or str
+    variable_dict: dictionary containing the keys and variables to be changed., None or dict
+        keys have to be the same as in the toml file.
+    """
+
+    temp = toml.load(old_file)
+
+    if type(category) == dict:
+        for cat in category:
+            for key in category[cat]:
+                """if type(category[cat][key]) == dict:
+                    for sub_key in category[cat][key]:
+                        temp[cat][key][sub_key] = category[cat][key][sub_key]
+                else:"""
+                temp[cat][key] = category[cat][key]
+
+    elif type(category) == str and type(variable_dict) == dict:
+        for key in variable_dict:
+            temp[category][key] = variable_dict[key]
+
+    else:
+        print("Input valid.\n"
+              "category must be dict or str\n"
+              "variable_dict must be None or dict")
+
+    with open(new_file, 'w+') as f:
+        toml.dump(temp, f)
+
+    return temp
 
 def write_default_configuration(path_empty, path_default):
     """
@@ -27,7 +72,6 @@ def write_default_configuration(path_empty, path_default):
     - File handling
     - any other stuff that might be needed
     """
-    from .iDrinkUtilities import write_to_config
 
     # TODO: In GUI, let User choose some of the settings. Which is to be decided.
 
@@ -270,126 +314,3 @@ def write_default_configuration(path_empty, path_default):
 
     write_to_config(path_empty, path_default, categories)
 
-
-def prep_participant(dir_session, id_session, id_participant):
-    """
-    NOT IMPLEMENTED
-    """
-    if not os.path.exists(dir_session):
-        print(f"Participant folder not found. Create new participant folder with ID {id_participant}")
-        prep_participant(dir_session, id_session, id_participant)
-
-    return
-
-
-def prep_next_trial(dir_session, dir_participant, id_session, id_participant):
-    """
-    Looks if paths for corresponding session ID and participant ID exist.
-    On Session Level, it checks, whether Calibration folder already exists.
-
-    If necessary it creates the participant folder and then the folder for the trial with its subfolders
-    The User can Add a name to the Trial, but doesn't need to. The name is added as appendix to the foldername
-
-    If not, it reminds the user to calibrate before recording the participant.
-    And asks whether to execute the calibration and create the corresponding folder structures.
-    """
-    dir_calib = os.path.realpath(
-        os.path.join(dir_session, f"{re.match(r'(S00)', os.path.basename(dir_session)).group(1)}_calibration"))
-    if not os.path.exists(dir_calib):
-        print(f"No Calibration folder found for Session {id_session}.\n"
-              f"Please execute Calibration before you record any participants.")
-        do_calibration = input("Do you want to start with the calibration? (y/n)")
-        while True:
-            if do_calibration == "y":
-                # run_calibration() TODO: Implement
-                break
-            elif do_calibration == "n":
-                break
-            else:
-                do_calibration = input("Answer invalid. (y/n)")
-
-    if not os.path.exists(dir_participant):
-        print(f"Participant folder not found. Create new participant folder with ID {id_participant}")
-        prep_participant(dir_session, id_session, id_participant)
-
-    """Start with Trial creation"""
-    # Look through Participant Folder and search highest Trial ID.
-    subfolder_list = [folder for folder in glob.glob(os.path.join(dir_participant, '*/'))]
-    trial_id_regex = re.compile(r"T\d+")
-    trial_ids = []
-    for folder in subfolder_list:
-        # Suche nach Trial-ID in jedem Pfad
-        match = trial_id_regex.search(folder)
-        if match:
-            trial_ids.append(match.group())
-
-    print("Found Trial-IDs:", trial_ids)
-    highest_id = max(trial_ids, key=lambda id: int(id[1:]), default=None)
-
-    if highest_id is not None:
-        # Increment ID and write New ID.
-        new_id = int(highest_id[1:]) + 1
-        num_length = len(highest_id[1:])
-        id_trial = f"T{new_id:0{num_length}d}"
-    else:
-        id_trial = "T00"
-
-    T_identifier = f"{id_session}_{id_participant}_{id_trial}"
-
-    def get_trial_folder_name():
-        # Ask user if Appendix is wanted
-        add_appendix = input("Do you want to add an appendix to the trial-folder? (y/n)")
-        while True:
-            if add_appendix == "y":
-                trial_appendix = input("Please enter appendix.")
-                valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
-                if all(c in valid_chars for c in trial_appendix):
-                    trial_appendix = f"_{trial_appendix}"
-                    break
-                else:
-                    invalid_chars = set(trial_appendix) - set(valid_chars)
-                    print(f"Invalid characters: {invalid_chars}")
-            elif add_appendix == "n":
-                trial_appendix = ""
-                break
-            else:
-                add_appendix = input("Answer invalid. (y/n)")
-
-        return f"{T_identifier}{trial_appendix}"
-
-    trial_folder_name = get_trial_folder_name()
-
-    while True:
-        dir_trial = os.path.realpath(
-            os.path.join(dir_participant, trial_folder_name))
-        if os.path.exists(dir_trial):
-            print(f"{trial_folder_name} already taken. Please change name")
-            trial_folder_name = get_trial_folder_name()
-        else:
-            os.makedirs(dir_trial, exist_ok=True)
-            break
-
-    """Create empty Folder structure"""
-    dirnames = {
-        "Analyze Results": ["murphy_measures",
-                            "kin_opensim_analyzetool",
-                            "kin_trc",
-                            "kin_keypoint"],
-        "pose": [],
-        "pose-3d": [],
-        "pose_associated": [],
-        "videos": ["recordings",
-                   "videos_blurred", ]
-    }
-
-    for folder in dirnames.keys():
-        os.makedirs(os.path.join(dir_trial, folder))
-        for subfolder in dirnames[folder]:
-            os.makedirs(os.path.join(dir_trial, folder, subfolder))
-
-    """Place empty config file"""
-
-    empty_file = os.path.join(dir_default, "Config_empty.toml")
-    config_path = os.path.realpath(os.path.join(dir_trial, f"{T_identifier}_Config.toml"))
-
-    write_default_configuration(empty_file, config_path)

@@ -9,7 +9,7 @@ from tqdm import tqdm
 import argparse
 import pandas as pd
 
-from iDrink import iDrinkTrial, iDrinkPoseEstimation, iDrinkVisualInput, iDrinkOpenSim
+from iDrink import iDrinkTrial, iDrinkVisualInput, iDrinkOpenSim
 
 from Pose2Sim import Pose2Sim
 
@@ -33,7 +33,16 @@ def move_files_to_bids(trial, dir_mot_out):
     :return:
     """
 
-    dir_trial = trial.dir_trial
+    path_mot = glob.glob(os.path.join(trial.dir_trial, "pose-3d", "*.mot"))[0]
+
+    shutil.copy2(path_mot, dir_mot_out)
+    shutil.copy2(trial.path_opensim_ana_pos, dir_mot_out)
+    shutil.copy2(trial.path_opensim_ana_vel, dir_mot_out)
+    shutil.copy2(trial.path_opensim_ana_acc, dir_mot_out)
+    shutil.copy2(trial.path_opensim_ana_ang_pos, dir_mot_out)
+    shutil.copy2(trial.path_opensim_ana_ang_vel, dir_mot_out)
+    shutil.copy2(trial.path_opensim_ana_ang_acc, dir_mot_out)
+
 
 
 def create_trials(id_s, id_p, df_events, task, calib_file):
@@ -88,7 +97,19 @@ def create_trials(id_s, id_p, df_events, task, calib_file):
 
     return trials
 
-def run(id_s, id_p, task='drink'):
+def run(id_s, id_p, task='drink', stabilize_hip=False, correct_skeleton=False):
+    """
+    Runs the iDrink Pipeline for the Demo in September 2024.
+
+    The Demo uses the Pose Estimation implemented by Pose2Sim.
+
+    :param id_s: Session ID e.g. "rest" or "13082024-1428"
+    :param id_p: Pateint ID e.g. "4a2" or "5051234"
+    :param task: Task e.g. "drink"
+    :param stabilize_hip: Boolean whether hip should be stabilized using the mean after inverse Kinematics
+    :param correct_skeleton: Boolean whether the skeleton should be rotated in the global coordinate System to sit upright.
+    :return:
+    """
 
 
     """Get video files, calibration_file and events file"""
@@ -108,10 +129,8 @@ def run(id_s, id_p, task='drink'):
 
 
     for trial in trials:
-        #Cut recording down to individual trials
-
+        """Cut recording down to individual trials"""
         videos = iDrinkVisualInput.cut_videos_to_trials(video_files, trial)
-
 
         """Run Pipeline for each trial"""
         trial.config_dict["pose"]["videos"] = videos
@@ -121,30 +140,25 @@ def run(id_s, id_p, task='drink'):
         trial.config_dict['pose']['pose_framework'] = trial.used_framework
         trial.config_dict['pose']['pose_model'] = trial.pose_model
 
-        trial.run_pose2sim()
+        trial.stabilize_hip = stabilize_hip
+        trial.correct_skeleton = correct_skeleton
 
+        trial.run_pose2sim()
         trial.prepare_opensim()
 
         iDrinkOpenSim.open_sim_pipeline(trial)
-
         move_files_to_bids(trial, dir_mot_out)
-
-        # TODO: Add that somewhere before Pose Estimation
-
-
-
-    pass
 
 
 if __name__ == '__main__':
-    # Parse command line arguments
+    # Main is only used for debugging using an example session and measurment.
 
     if sys.gettrace() is not None:
         print("Debug Mode is activated\n"
               "Starting debugging script.")
 
-        id_s = "rest"
-        id_p = "4a2"
-        task = "drink"
+    id_s = "rest"
+    id_p = "4a2"
+    task = "drink"
 
-    run(id_s, id_p, task)
+    run(id_s=id_s, id_p=id_p, task=task)

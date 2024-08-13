@@ -2,31 +2,70 @@ import logging
 import logging.handlers
 import os
 import string
+import glob
 
 import numpy as np
 import opensim
 import pandas as pd
 from trc import TRCData
 
-from .iDrinkUtilities import edit_xml
 
-def ik_tool_to_csv(curr_trial):
+def edit_xml(xml_file, xml_keys, new_values, target_file=None, filename_appendix=None):
+    from xml.etree import ElementTree
+
     """
-    This function saves the angles calculated by the Inverse Kinematics Tool to a .csv file.
+    by default, this function edits an existing file. 
+    If target Directory is given, a new xml_file is created.
+    A new Appendix to the new filename can be given. e.g. The Session/Participant ID
+
+    Input:
+        xml_file: path to xml_file to edit
+        xml_keys: list of keys in file to be edited
+        new_values: the new values
+            ith value corresponds to ith key
+
+        Possible changes to function: 
+        Change so Input changes to:
+
+        table: pandas Dataframe containing:
+            - the path to the default xml_files
+            - the path for new and edited xml_files
+            - key that will be changed
+            - new values
     """
-    # Get Filename and path
-    filename = curr_trial.get_filename()
-    dir_out = curr_trial.dir_kin_ik_tool
 
-    # Make sure, Folder exists
-    if not os.path.exists(dir_out):
-        os.makedirs(dir_out)
-    file_path = os.path.realpath(os.path.join(dir_out, filename))
+    tree = ElementTree.parse(xml_file)
+    root = tree.getroot()
 
-    # Read data and save to .csv
-    opensim_motion = os.path.join(curr_trial.dir_trial, curr_trial.opensim_motion)
-    _, dat_measured = read_opensim_file(opensim_motion)
-    dat_measured.to_csv(f"{file_path}.csv", index=False)
+    # Find the element to be edited
+    for i in range(len(xml_keys)):
+        for key in root.iter(xml_keys[i]):
+            # print(f"changing {key.text} to {new_value}")
+            key.text = new_values[i]  # Change the value of the element
+
+    # check create_new_file
+    if target_file is not None:  # if target file is given, create new file
+        # check whether destination_folder exists
+        target_dir = os.path.dirname(target_file)
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+
+        if filename_appendix is not None:
+            basename, extension = os.path.splitext(os.path.basename(xml_file))
+            filename = f"{basename}_{filename_appendix}{extension}"
+            target_file = os.path.join(target_dir, filename)
+
+        try:
+            with open(target_file, "wb") as f:
+                tree.write(f)
+        except Exception as e:
+            print(f"Error: {e}")
+
+    else:  # edit existing file
+        try:
+            tree.write(xml_file)
+        except Exception as e:
+            print(f"Error: {e}")
 
 
 def read_opensim_file(file_path):
@@ -190,7 +229,7 @@ def open_sim_pipeline(curr_trial):
     # Run Scaling and Invkin Tools
     scaleTool.run()
     ikTool.run()
-    ik_tool_to_csv(curr_trial=curr_trial)
+
     kinematic_analysis = opensim.Kinematics(curr_trial.opensim_analyze)
     if not os.path.exists(os.path.join(curr_trial.dir_trial, curr_trial.opensim_dir_analyze_results)):
         os.makedirs(os.path.join(curr_trial.dir_trial, curr_trial.opensim_dir_analyze_results))
@@ -202,6 +241,16 @@ def open_sim_pipeline(curr_trial):
     analyzetool.setModelFilename(model_relpath)
     analyzetool.setCoordinatesFileName(curr_trial.opensim_motion)
     analyzetool.run()
+
+    # Add paths of Analyzertool Output to trial Object
+    curr_trial.path_opensim_ana_pos = glob.glob(os.path.join(curr_trial.dir_anatool_results, r"*BodyKinematics_pos*"))[0]
+    curr_trial.path_opensim_ana_vel = glob.glob(os.path.join(curr_trial.dir_anatool_results, r"*BodyKinematics_vel*"))[0]
+    curr_trial.path_opensim_ana_acc = glob.glob(os.path.join(curr_trial.dir_anatool_results, r"*BodyKinematics_acc*"))[0]
+    curr_trial.path_opensim_ana_ang_pos = glob.glob(os.path.join(curr_trial.dir_anatool_results, r"*Kinematics_q*"))[0]
+    curr_trial.path_opensim_ana_ang_vel = glob.glob(os.path.join(curr_trial.dir_anatool_results, r"*Kinematics_u*"))[0]
+    curr_trial.path_opensim_ana_ang_acc = glob.glob(os.path.join(curr_trial.dir_anatool_results, r"*Kinematics_dudt*"))[0]
+
+
     from Pose2Sim_081_iDrink.Utilities import bodykin_from_mot_osim
     bodykin_csv = os.path.realpath(os.path.join(curr_trial.dir_kin_p2s,
                                                 f"{curr_trial.get_filename()}_Body_kin_p2s_pos.csv"))
@@ -211,5 +260,5 @@ def open_sim_pipeline(curr_trial):
                                                      os.path.join(curr_trial.dir_trial,
                                                                   curr_trial.opensim_model_scaled),
                                                      bodykin_csv)
-    """if curr_trial.correct_skeleton:
-        correct_skeleton_orientation(os.path.join(curr_trial.dir_trial, curr_trial.opensim_motion))"""  # TODO: Check if still needed
+    if curr_trial.correct_skeleton:
+        correct_skeleton_orientation(os.path.join(curr_trial.dir_trial, curr_trial.opensim_motion))
