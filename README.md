@@ -9,17 +9,18 @@ To install Opensim use the command: `conda install opensim-org::opensim`
 
 ### pytorch
 
-To install Pytorch you can use either one of these commands:
+To install Pytorch you can use: `conda install pytorch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 pytorch-cuda=12.1 -c pytorch -c nvidia`
 
-1. `conda install pytorch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 pytorch-cuda=12.1 -c pytorch -c nvidia`
-2. `pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121`
+If you tried to install using conda and it fails, you can use: `pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121`
+
+The conda isntallation needs to be performed to install CUDA dependencies, that are not added using pip.
 
 ### onnxruntime-gpu
 To install the correct onnxruntime-gpu you can use one of the follwing commands depending on your OS.
 
-\textbf{Win}: `pip install https://aiinfra.pkgs.visualstudio.com/PublicPackages/_apis/packaging/feeds/9387c3aa-d9ad-4513-968c-383f6f7f53b8/pypi/packages/onnxruntime-gpu/versions/1.18/onnxruntime_gpu-1.18.0-cp312-cp312-win_amd64.whl/content`
+**Win**: `https://aiinfra.pkgs.visualstudio.com/PublicPackages/_apis/packaging/feeds/9387c3aa-d9ad-4513-968c-383f6f7f53b8/pypi/packages/onnxruntime-gpu/versions/1.18/onnxruntime_gpu-1.18.0-cp311-cp311-win_amd64.whl/content`
 
-\textbf{Linux}: `pip install https://aiinfra.pkgs.visualstudio.com/PublicPackages/_apis/packaging/feeds/9387c3aa-d9ad-4513-968c-383f6f7f53b8/pypi/packages/onnxruntime-gpu/versions/1.18/onnxruntime_gpu-1.18.0-cp312-cp312-manylinux_2_28_x86_64.whl/content`
+**Linux**: `https://aiinfra.pkgs.visualstudio.com/PublicPackages/_apis/packaging/feeds/9387c3aa-d9ad-4513-968c-383f6f7f53b8/pypi/packages/onnxruntime-gpu/versions/1.18/onnxruntime_gpu-1.18.0-cp311-cp311-manylinux_2_28_x86_64.whl/content`
 
 The Linux Version has not yet been tested.
 
