@@ -301,14 +301,10 @@ class Trial:
         from .iDrinkSetup import write_default_configuration
         """Create empty Folder structure"""
         dirs = [
-            self.dir_murphy_measures,
             self.dir_anatool_results,
-            self.dir_kin_trc,
             self.dir_kin_p2s,
             self.dir_kin_ik_tool,
             self.dir_recordings,
-            self.dir_rec_blurred,
-            self.render_out,
             os.path.realpath(os.path.join(self.dir_trial, "pose")),
             os.path.realpath(os.path.join(self.dir_trial, "pose-3d")),
             os.path.realpath(os.path.join(self.dir_trial, "pose-associated")),
@@ -491,7 +487,7 @@ class Trial:
                                   0] + ".mot"
 
         self.opensim_scaling_time_range = self.get_time_range(path_trc_file=self.opensim_marker_filtered,
-                                                              frame_range=[0, 1], as_string=True)
+                                                              frame_range=[0, 10], as_string=True)
         self.opensim_IK_time_range = self.get_time_range(path_trc_file=self.opensim_marker_filtered, as_string=True)
         self.opensim_ana_init_t = str(
             self.get_time_range(path_trc_file=self.opensim_marker_filtered, as_string=False)[0])
