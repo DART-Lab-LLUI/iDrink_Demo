@@ -16,11 +16,19 @@ This File runs the iDrink Pipeline for the Demo for September 2024.
 
 It gets 
 """
-dir_root = os.path.realpath(r"C:\iDrink_Demo")
-dir_root_recs = os.path.join(dir_root, r"bids_root_folder")
-dir_mot_out = None
+parser = argparse.ArgumentParser(description='Run iDrink Backend for the Demo in September 2024')
+parser.add_argument('--dir_root', metavar='dr', type=str, help='Path to the root folder of the BackEnd')
+parser.add_argument('--bids_root', metavar='br', type=str, help='Path to the BIDS root folder')
+parser.add_argument('--id_s', metavar='ids', type=str, help='Session ID, e.g. rest')
+parser.add_argument('--id_p', metavar='idp', type=str, help='Patient ID, e.g. 4a2')
+parser.add_argument('--task', metavar='t', type=str, default='drink', help='Task to be analyzed default: drink')
+parser.add_argument('--DEBUG', action='store_true', default=False, help='Debug mode - specific folder structure necessary')
 
-dir_session_data = os.path.join(dir_root, "session_data")
+dir_root = None
+dir_root_recs = None
+dir_mot_out = None
+dir_session_data = None
+
 
 def move_files_to_bids(trial, dir_mot_out):
     """
@@ -151,12 +159,49 @@ def run(id_s, id_p, task='drink', stabilize_hip=True, correct_skeleton=False):
 if __name__ == '__main__':
     # Main is only used for debugging using an example session and measurment.
 
-    if sys.gettrace() is not None:
+    # Parse command line arguments
+    args = parser.parse_args()
+
+    if sys.gettrace() is not None or args.DEBUG:
         print("Debug Mode is activated\n"
               "Starting debugging script.")
+        args.dir_root = os.path.realpath(r"C:\iDrink_Demo")
+        args.bids_root = os.path.join(args.dir_root, r"bids_root_folder")
 
-    id_s = "rest"
-    id_p = "4a2"
-    task = "drink"
+        args.id_s = "rest"
+        args.id_p = "4a2"
+        args.task = "drink"
+
+    dir_root = args.dir_root
+    dir_root_recs = args.bids_root
+    id_s = args.id_s
+    id_p = args.id_p
+    task = args.task
+
+    dir_session_data = os.path.join(dir_root, "session_data")
+
+    if dir_root is None:
+        print("Please provide a root folder for the backend.")
+        sys.exit(1)
+
+    if dir_root_recs is None:
+        dir_root_recs = os.path.join(args.dir_root, r"bids_root_folder")
+        print(f"No BIDS root folder given. Using default BIDS root folder: {dir_root_recs}")
+        x = input("Do you want to continue using the default BIDS root folder? [y/n]")
+        if x.lower() != 'y':
+            print("Please restart the script using an argument for the BIDS Root folder")
+            sys.exit(0)
+
+    if id_s is None:
+        id_s = input("No session ID given. Please enter an ID or 'n' to exit.")
+        if id_s.lower() == 'n':
+            sys.exit(0)
+        print("chosen session ID: ", id_s)
+
+    if id_p is None:
+        id_p = input("No patient ID given. Please enter an ID or 'n' to exit.")
+        if id_s.lower() == 'n':
+            sys.exit(0)
+        print("chosen patient ID: ", id_s)
 
     run(id_s=id_s, id_p=id_p, task=task)
