@@ -1,0 +1,40 @@
+Metadata-Version: 2.1
+Name: org.llui.idrink_backend
+Version: 0.1
+Summary: Stroke Rehabilitation Assistant
+Home-page: https://llui.org
+Author: Johann Ullrich
+Keywords: rehabilitation stroke poseestimation
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: Topic :: Utilities
+Classifier: Programming Language :: Python
+Classifier: Operating System :: POSIX :: Linux
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# iDrink_Demo
+
+
+## Installation
+
+### OpenSim
+
+To install Opensim use the command: `conda install opensim-org::opensim`
+
+### pytorch
+
+To install Pytorch you can use: `conda install pytorch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 pytorch-cuda=12.1 -c pytorch -c nvidia`
+
+If you tried to install using conda and it fails, you can use: `pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121`
+
+The conda isntallation needs to be performed to install CUDA dependencies, that are not added using pip.
+
+### onnxruntime-gpu
+
+[source](https://onnxruntime.ai/docs/install/)
+
+```
+pip install onnxruntime-gpu --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/
+```

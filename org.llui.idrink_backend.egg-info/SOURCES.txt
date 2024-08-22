@@ -1,0 +1,15 @@
+LICENSE
+MANIFEST.in
+README.md
+pyproject.toml
+setup.cfg
+setup.py
+org.llui.idrink_backend.egg-info/PKG-INFO
+org.llui.idrink_backend.egg-info/SOURCES.txt
+org.llui.idrink_backend.egg-info/dependency_links.txt
+org.llui.idrink_backend.egg-info/entry_points.txt
+org.llui.idrink_backend.egg-info/top_level.txt
+src/__init__.py
+src/__main__.py
+src/idrink_app.py
+src/opensim.log

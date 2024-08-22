@@ -1,0 +1,2 @@
+[console_scripts]
+idrink_backend = idrink_backend.idrink_app:main

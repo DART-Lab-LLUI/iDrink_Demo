@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run iDrink App",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/idrink_app.py",
+            "args": [
+                "--dir_root", "/home/arashsm79/Playground/iDrink_Demo/iDrink_root_example",
+                "--bids_root", "/home/arashsm79/amyproject",
+                "--id_p", "4a2",
+                "--id_s", "rest",
+                "--task", "drink"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
