@@ -436,7 +436,7 @@ class Trial:
         # TODO: Make this part more general. At the moment it is a bit too focused on OpenSim
 
         if self.dir_trial in path_in:
-            filepath = path_in.split(self.dir_trial + "\\", 1)[1]
+            filepath = os.path.relpath(path_in, self.dir_trial)
         else:
             return "dir_trial not in path"
 

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.basedpyright]
+typeCheckingMode = "basic"
+reportAny = false
+reportUntypedFunctionDecorator = false
+include = ["src"]
+executionEnvironments = [ { root = "src" } ]
+
+
+[tool.basedpyright.defineConstant]
+USE_PYQT6 = false
+USE_PYQT5 = false
+USE_PYSIDE6 = true
+IS_QT5 = false
+IS_QT6 = true
+IS_PYQT = false
+IS_PYSIDE = true
