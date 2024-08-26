@@ -138,7 +138,6 @@ def generate_plots(input_dir, output_dir):
 
             create_spider_plot(metrics, ax, title, metrics_type=metrics_type)
 
-            # plt.suptitle(f"{title} - {body_part.capitalize()}", size=24, y=1.05)
             plt.tight_layout(rect=[0, 0, 0.9, 0.95])
 
             # Save the figure in the specified plot directory
@@ -291,7 +290,7 @@ def generate_plots(input_dir, output_dir):
         body_parts = {}
         for feature in features:
             parts = feature.split('_')
-            body_part = f"{parts[0].capitalize()}_{parts[1].capitalize()}" if len(parts) == 3 else parts[0].capitalize()
+            body_part = f"{parts[0]}_{parts[1]}" if len(parts) == 3 else parts[0]
             if body_part not in body_parts:
                 body_parts[body_part] = []
             body_parts[body_part].append(feature)
@@ -467,6 +466,6 @@ def generate_plots(input_dir, output_dir):
 # Example of use
 
 motion_dir = r"/home/arashsm79/amyproject/sub-4a2/ses-rest/motion/"
-plot_dir = r"/home/arashsm79/amyproject/sub-4a2/ses-rest/plot"
+plot_dir = r"/home/arashsm79/amyproject/sub-4a2/ses-rest/metric"
 
 generate_plots(motion_dir, plot_dir)
