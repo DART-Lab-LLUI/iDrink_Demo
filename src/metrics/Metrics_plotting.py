@@ -462,10 +462,3 @@ def generate_plots(input_dir, output_dir):
 
     # Run the function to process and plot the files
     ts_process_csv_files(csv_dir)
-
-# Example of use
-
-motion_dir = r"/home/arashsm79/amyproject/sub-4a2/ses-rest/motion/"
-plot_dir = r"/home/arashsm79/amyproject/sub-4a2/ses-rest/metric"
-
-generate_plots(motion_dir, plot_dir)

@@ -23,8 +23,15 @@ def cut_videos_to_trials(video_files, trial):
     from threading import Thread
 
     def frame_loader_cut(cap, frame_start, frame_end, frame_queue, ret_queue):
+        
+        # cap.set(cv2.CAP_PROP_POS_FRAMES, frame_start) this is not accurate https://github.com/opencv/opencv/issues/9053
+        curr = 0
+        while True:
+            if curr == frame_start:
+                break
+            ret, frame = cap.read()
+            curr += 1
 
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_start)
         frame_count = frame_start
         while True:
 

@@ -6,12 +6,14 @@ import sys
 import time
 import re
 import shutil
+from pathlib import Path
 from tqdm import tqdm
 
 import argparse
 import pandas as pd
 
 from iDrink import iDrinkTrial, iDrinkVisualInput, iDrinkOpenSim
+from metrics.Metrics_plotting import generate_plots
 
 dir_root = None
 dir_root_recs = None
@@ -146,6 +148,9 @@ def run(id_s, id_p, task='drink', stabilize_hip=True, correct_skeleton=False):
 
         iDrinkOpenSim.open_sim_pipeline(trial)
         move_files_to_bids(trial, dir_mot_out)
+    
+    # generate plots
+    generate_plots(dir_mot_out, Path(dir_mot_out).parent / 'metric')
 
 
 def main():
