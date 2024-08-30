@@ -10,8 +10,114 @@ from matplotlib import colors as mcolors
 # files to csv
 from trc import TRCData
 from io import StringIO
+from scipy.signal import butter, filtfilt
+from scipy.spatial.transform import Rotation as R
+import quaternion # https://quaternion.readthedocs.io/en/latest/
 
-from imu import calculate_smoothness
+def normalize_quaternion(quat):
+    norm = np.linalg.norm(quat, axis=1, keepdims=True)
+    return quat / norm
+
+def filter_data(data, cutoff, fs, order, filter_type):
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
+    b, a = butter(order, normal_cutoff, btype=filter_type, analog=False)
+    filtered_data = filtfilt(b, a, data, axis=0)
+    return filtered_data
+
+def rotate_acc_by_quat(acc, quat):
+    rotated_acc = np.zeros_like(acc)
+    for i in range(len(acc)):
+        # Get (and optionally normalize) the quaternion
+        q = quaternion.from_float_array(quat[i])
+        #q = quaternion.as_float_array(q)/np.linalg.norm(quaternion.as_float_array(q))
+        
+        
+        # Convert acceleration vector to quaternion with zero real part
+        acc_quat = quaternion.from_float_array([0, *acc[i]])
+        
+        # Rotate acceleration: q * acc * q^(-1)
+        rotated = q * acc_quat * q.inverse()
+        
+        # Extract the vector part
+        rotated_acc[i] = quaternion.as_float_array(rotated)[1:]
+    
+    return rotated_acc
+
+
+def vecnorm(data, order, axis):
+    return np.linalg.norm(data, ord=order, axis=axis)
+
+def get_ldlj(*args):
+    if len(args) == 4 and args[1] == 'accel':
+        mov = args[0]
+        mov_type = args[1]
+        SampleRate = args[2]
+        quat = args[3]
+    elif len(args) == 3 and args[1] == 'vel':
+        mov = args[0]
+        mov_type = args[1]
+        SampleRate = args[2]
+    else:
+        raise ValueError("Input with 4 arguments must be: movement(accelerometer time series), "
+                         "movement type ('accel'), Sample Rate, and quaternion time series. "
+                         "Input with 3 arguments must be: movement(velocity time series), "
+                         "movement type ('vel'), and Sample Rate")
+    
+    dt = 1.0 / SampleRate
+
+    if mov_type == 'accel':
+        quat = normalize_quaternion(quat)
+        mov = filter_data(mov, fs_cut, SampleRate, 4, 'low')
+        mov = rotate_acc_by_quat(mov, quat)
+        mov = mov - np.array([0, 0, 9.81])
+        mov = (mov - np.mean(mov, axis=0)) 
+        acc = vecnorm(mov, 2, axis=1)
+    elif mov_type == 'vel':
+        mov = mov.T
+        acc = np.diff(mov, axis=0) / dt
+        acc = np.vstack([acc[0, :], acc])
+        acc = filter_data(acc, 5, SampleRate, 4, 'low')
+        acc = vecnorm(acc, 2, axis=1)
+
+
+    jerk = vecnorm(np.diff(acc, axis=0), 2, axis=0) / dt
+    mjerk = np.sum(jerk ** 2) * dt
+
+    T = len(acc)
+    mdur = T * dt
+
+    mamp = np.max(vecnorm(acc, 2, axis=0)) ** 2
+
+    ldlj = -np.log(mdur) + np.log(mamp) - np.log(mjerk)
+
+    return ldlj
+
+def calculate_smoothness(data_path: str):
+    # read in data (affected or unaffected - the more negative the less smooth)
+    imu_data = pd.read_csv(data_path)
+    timestamp_diff = imu_data['timestamp'].diff().dropna()
+
+    # Calculate the average time difference
+    average_time_diff = timestamp_diff.mean()
+    # Calculate the sample rate in Hz (samples per second)
+    sample_rate = 1 / (average_time_diff / 1e9)  # Convert nanoseconds to seconds
+    # Euler angles are in columns named 'euler_x', 'euler_y', 'euler_z'
+    euler_angles = imu_data[['euler_x', 'euler_y', 'euler_z']].values
+
+    # Convert Euler angles (in degrees) to quaternions
+    # Adjust 'xyz' and degrees=True according to your data's specifics
+    rotations = R.from_euler('xyz', euler_angles, degrees=True)
+    quat = rotations.as_quat()  # Returns quaternions in the format [x, y, z, w]
+    acc = imu_data[['accel_x', 'accel_y', 'accel_z']].values
+    # set parameters
+    SampleRate = sample_rate
+    global fs_cut
+    fs_cut = SampleRate/4 ; # cut-off frequency for low-pass filter -> this is set random we need to check 
+    # Get the LDLJ
+    ldlj = get_ldlj(acc, 'accel', SampleRate, quat)
+    return ldlj
+
 
 
 def generate_plots(input_dir, output_dir):
@@ -477,13 +583,13 @@ def generate_plots(input_dir, output_dir):
                 plt.tight_layout()
 
                 if '_dudt' in title:
-                    plt.ylim(-10000, 10000)
+                    plt.ylim(-15000, 15000)
                 elif '_mot' in title:
-                    plt.ylim(-50, 200)
+                    plt.ylim(-200, 200)
                 elif '_q' in title:
-                    plt.ylim(-50, 200)
+                    plt.ylim(-200, 200)
                 elif '_u' in title:
-                    plt.ylim(-2000, 2000)
+                    plt.ylim(-3000, 3000)
                 
                 file_name = f"{title}_{feature}.png"
                 plt.savefig(os.path.join(plot_dir, file_name),bbox_inches='tight')
@@ -521,7 +627,7 @@ def generate_plots(input_dir, output_dir):
 
     # Function to create 3D motion data plots
     def plot_3d_motion_data(df, title_prefix, plot_dir):
-        def plot_individual_3d(data, label, file_suffix):
+        def plot_individual_3d(data, label, file_suffix, hand_max, hand_min):
             fig = plt.figure(figsize=(10, 8))
             ax = fig.add_subplot(111, projection='3d')
 
@@ -545,14 +651,10 @@ def generate_plots(input_dir, output_dir):
             ax.set_xlabel('X Position')
             ax.set_ylabel('Y Position')
             ax.set_zlabel('Z Position')
-            # if 'hand' in file_suffix :
-            #     ax.set_xlim(-0.1, 0.3)
-            #     ax.set_ylim(-1.5, 1.5)
-            #     ax.set_zlim(0, 0.25)
-            # elif  'torso' in file_suffix :
-            #     ax.set_xlim(-0.08, 0.02)
-            #     ax.set_ylim(1.25, 1.5)
-            #     ax.set_zlim(-0.2, -0.16)
+            if 'hand' in file_suffix :
+                ax.set_xlim(hand_min[0], hand_max[0])
+                ax.set_ylim(hand_min[1], hand_max[1])
+                ax.set_zlim(hand_min[2], hand_max[2])
             ax.legend()
             ax.set_title(f"{title_prefix}_{file_suffix} - 3D Motion Trajectory")
 
@@ -563,6 +665,21 @@ def generate_plots(input_dir, output_dir):
 
         try:
             # Plot for each body part
+            hand_max= [-np.inf, -np.inf, -np.inf]
+            hand_min= [np.inf, np.inf, np.inf]
+            for body_part in ['hand_r', 'hand_l', 'torso']:
+                if all(col in df.columns for col in [f'{body_part}_X', f'{body_part}_Y', f'{body_part}_Z']):
+                    body_part_df = df[[f'{body_part}_X', f'{body_part}_Y', f'{body_part}_Z']].copy()
+                    body_part_df.columns = ['X', 'Y', 'Z']  # Rename columns for consistency
+                    
+                    hand_max[0] = max(hand_max[0], np.max(body_part_df['X']))
+                    hand_max[1] = max(hand_max[1], np.max(body_part_df['Y']))
+                    hand_max[2] = max(hand_max[2], np.max(body_part_df['Z']))
+
+                    hand_min[0] = min(hand_min[0], np.min(body_part_df['X']))
+                    hand_min[1] = min(hand_min[1], np.min(body_part_df['Y']))
+                    hand_min[2] = min(hand_min[2], np.min(body_part_df['Z']))
+
             for body_part in ['hand_r', 'hand_l', 'torso']:
                 if all(col in df.columns for col in [f'{body_part}_X', f'{body_part}_Y', f'{body_part}_Z']):
                     body_part_df = df[[f'{body_part}_X', f'{body_part}_Y', f'{body_part}_Z']].copy()
@@ -572,7 +689,7 @@ def generate_plots(input_dir, output_dir):
                     if 'time' in df.columns:
                         body_part_df['time'] = df['time']
                     
-                    plot_individual_3d(body_part_df, body_part, body_part)
+                    plot_individual_3d(body_part_df, body_part, body_part, hand_max, hand_min)
 
         except Exception as e:
             print(f"Failed to create 3D plot: {e}")
@@ -620,4 +737,4 @@ def generate_plots(input_dir, output_dir):
     mot_process_csv_files(csv_dir)
     
 
-generate_plots('/home/arashsm79/bids_root/sub-4a20/ses-20240901a/motion/', '/home/arashsm79/bids_root/sub-4a20/ses-20240901a/metric/')
+# generate_plots('/home/arashsm79/bids_root/sub-4a20/ses-20240901a/motion/', '/home/arashsm79/bids_root/sub-4a20/ses-20240901a/metric/')
