@@ -1,4 +1,6 @@
 import os
+import re
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,6 +10,8 @@ from matplotlib import colors as mcolors
 # files to csv
 from trc import TRCData
 from io import StringIO
+
+from imu import calculate_smoothness
 
 
 def generate_plots(input_dir, output_dir):
@@ -23,6 +27,29 @@ def generate_plots(input_dir, output_dir):
     print(f"CSV Directory: {csv_dir}")
     print(f"Results Directory: {results_dir}")
     print(f"Plots Directory: {plot_dir}")
+    
+    def plot_smoothing():
+        input_dir_path = Path(input_dir)
+        found_files = [str(file) for file in input_dir_path.glob( '*_motion.csv')]
+        smoothness_dict = {}
+        for file in found_files:
+            match = re.search(r'-(?!.*-)([^-_]+)_motion\.csv', file)
+            if match:
+                segment = match.group(1)
+                smoothness_dict[segment] = calculate_smoothness(file)
+        data = {k: round(v, 2) for k, v in smoothness_dict.items()}
+        labels = list(data.keys())
+        values = list(data.values())
+        fig, ax = plt.subplots()
+        bars = ax.bar(labels, values, color='lightcoral')
+        for bar in bars:
+            yval = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2, yval, f'{yval}', ha='center', va='bottom')
+        ax.set_xlabel('Segments')
+        ax.set_ylabel('Smoothing')
+        plt.savefig(os.path.join(plot_dir, 'smoothing.png'), bbox_inches='tight')
+
+    plot_smoothing()
 
     # Import functions from the external iDrink library
     # from Reading_files_csv import process_files
@@ -518,16 +545,16 @@ def generate_plots(input_dir, output_dir):
             ax.set_xlabel('X Position')
             ax.set_ylabel('Y Position')
             ax.set_zlabel('Z Position')
-            if 'hand' in file_suffix :
-                ax.set_xlim(-0.1, 0.3)
-                ax.set_ylim(-1.5, 1.5)
-                ax.set_zlim(0, 0.25)
-            elif  'torso' in file_suffix :
-                ax.set_xlim(-0.08, 0.02)
-                ax.set_ylim(1.25, 1.5)
-                ax.set_zlim(-0.2, -0.16)
+            # if 'hand' in file_suffix :
+            #     ax.set_xlim(-0.1, 0.3)
+            #     ax.set_ylim(-1.5, 1.5)
+            #     ax.set_zlim(0, 0.25)
+            # elif  'torso' in file_suffix :
+            #     ax.set_xlim(-0.08, 0.02)
+            #     ax.set_ylim(1.25, 1.5)
+            #     ax.set_zlim(-0.2, -0.16)
             ax.legend()
-            # ax.set_title(f"{title_prefix}_{file_suffix} - 3D Motion Trajectory")
+            ax.set_title(f"{title_prefix}_{file_suffix} - 3D Motion Trajectory")
 
             file_name = f"{title_prefix}_{file_suffix.lower()}_3D.png"
             plt.savefig(os.path.join(plot_dir, file_name), bbox_inches='tight')
@@ -591,7 +618,6 @@ def generate_plots(input_dir, output_dir):
     # Call the functions to generate plots
     ts_process_csv_files(csv_dir)
     mot_process_csv_files(csv_dir)
+    
 
-motion_dir = r"c:\Users\anna.schmitt\Desktop\iDrink_Demo\motion"
-plot_dir = r"c:\Users\anna.schmitt\Desktop\iDrink_Demo"
-generate_plots(motion_dir, plot_dir)
+generate_plots('/home/arashsm79/bids_root/sub-4a20/ses-20240901a/motion/', '/home/arashsm79/bids_root/sub-4a20/ses-20240901a/metric/')

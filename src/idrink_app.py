@@ -13,7 +13,7 @@ import argparse
 import pandas as pd
 
 from iDrink import iDrinkTrial, iDrinkVisualInput, iDrinkOpenSim
-from metrics.Metrics_plotting import generate_plots
+from metrics.Metrics_plotting_aio import generate_plots
 
 dir_root = None
 dir_root_recs = None
@@ -94,7 +94,7 @@ def create_trials(id_s, id_p, df_events, task, calib_file):
 
     return trials
 
-def run(id_s, id_p, task='drink', stabilize_hip=True, correct_skeleton=False):
+def run(id_s, id_p, calib_path: str | None = None, task='drink', stabilize_hip=True, correct_skeleton=False):
     """
     Runs the iDrink Pipeline for the Demo in September 2024.
 
@@ -116,7 +116,11 @@ def run(id_s, id_p, task='drink', stabilize_hip=True, correct_skeleton=False):
     global dir_mot_out
     dir_mot_out = os.path.join(dir_measurement, "motion")
 
-    calib_file = glob.glob(os.path.join(dir_measurement, "**",  "*calibration.toml"))[0]
+    if calib_path is None:
+        calib_file = glob.glob(os.path.join(dir_measurement, "**",  "*calibration.toml"))[0]
+    else:
+        calib_file = calib_path
+
     video_files = glob.glob(os.path.join(dir_measurement, "video", f"*task-{task}*.mp4"))
     cams = [re.search(r"cam\d", video)[0] for video in video_files]
 
@@ -160,6 +164,7 @@ def main():
     parser.add_argument('--id_s', metavar='ids', type=str, help='Session ID, e.g. rest')
     parser.add_argument('--id_p', metavar='idp', type=str, help='Patient ID, e.g. 4a2')
     parser.add_argument('--task', metavar='t', type=str, default='drink', help='Task to be analyzed default: drink')
+    parser.add_argument('--calib', metavar='cbpath', default=None, type=str, help='Path to calibration file.')
     parser.add_argument('--DEBUG', action='store_true', default=False, help='Debug mode - specific folder structure necessary')
 
     args = parser.parse_args()
@@ -176,8 +181,11 @@ def main():
     id_s = args.id_s
     id_p = args.id_p
     task = args.task
+    calib_path = args.calib
+    if calib_path is None or len(calib_path) < 2:
+        calib_path = None
 
-    run(id_s=id_s, id_p=id_p, task=task)
+    run(id_s=id_s, id_p=id_p, task=task, calib_path=calib_path)
 
 
 if __name__ == '__main__':
