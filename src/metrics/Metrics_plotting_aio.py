@@ -656,7 +656,7 @@ def generate_plots(input_dir, output_dir):
                 ax.set_ylim(hand_min[1], hand_max[1])
                 ax.set_zlim(hand_min[2], hand_max[2])
             ax.legend()
-            ax.set_title(f"{title_prefix}_{file_suffix} - 3D Motion Trajectory")
+            # ax.set_title(f"{title_prefix}_{file_suffix} - 3D Motion Trajectory")
 
             file_name = f"{title_prefix}_{file_suffix.lower()}_3D.png"
             plt.savefig(os.path.join(plot_dir, file_name), bbox_inches='tight')
